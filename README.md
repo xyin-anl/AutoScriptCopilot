@@ -1,1 +1,1 @@
-# AutoScriptGen
+# AutoScriptCopilot

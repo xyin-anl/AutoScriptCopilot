@@ -165,6 +165,11 @@ The workflow can be visualized using:
 workflow.graph.get_graph().draw_mermaid_png(output_file_path="tem_workflow.png")
 ```
 
+<div align="center">
+  <img src="tem_workflow.png" alt="Workflow" width="300"/>
+  <h3></h3>
+</div>
+
 Note that `graphviz` need to be installed in the system and python package `pygraphviz` is needed.
 
 ### Template Export

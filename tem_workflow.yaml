@@ -1,0 +1,125 @@
+name: TEMWorkflow_12_17_2024_12_44_10
+state_defs:
+- current_node_type: str
+- previous_node_type: str
+- human_input: str
+- input: str
+- output: str
+- messages: List[dict]
+- microscope_id: str
+- microscope_info: Dict[str, str]
+- vacuum_state: str
+- beam_state: bool
+- detector_status: Dict[str, bool]
+- magnification: float
+- focus: float
+- stigmator_values: Dict[str, float]
+- exposure_time: float
+- frame_size: int
+- detector_type: str
+- trail_mode: bool
+- direct_mode: bool
+- recommender_knowledge: str
+- data_analysis_tool: str
+- trail_mode_detector_type: str
+- current_image: str
+- image_quality_metrics: Dict[str, float]
+- optimization_history: List[dict]
+- validation_response: dict
+- updated_parameters: dict
+- data_analysis_results: dict
+nodes:
+  initialize:
+    type: initialize
+    sink:
+    - microscope_id
+    - microscope_info
+    - vacuum_state
+    - beam_state
+    - detector_status
+    next: validate
+  validate:
+    type: prompt
+    template: 'Analyze microscope setup: Vacuum State: {vacuum_state} Beam State:
+      {beam_state} Detector Status: {detector_status} Validate against required conditions:
+      1. Vacuum must be in READY state 2. Beam must be active and properly controlled
+      3. Selected detector must be operational Output validation results as JSON:
+      {{ "is_valid": bool, "issues": [str], "recommendations": [str] }}'
+    sink: validation_response
+    next:
+      condition: validation_response["is_valid"]
+      then: recommend
+      otherwise: END
+  recommend:
+    type: prompt
+    template: 'Recommender knowledge: {recommender_knowledge} Current microscope state
+      and setup: - Vacuum State: {vacuum_state} - Beam State: {beam_state} - Detector
+      Type: {detector_type} Recommend optimal imaging parameters for the current setup.
+      Consider: 1. Detector capabilities and limitations 2. Sample preservation requirements
+      3. Image quality requirements Output as JSON: {{ "parameter_values": {{ "magnification":
+      float, "focus": float, "exposure_time": float, "frame_size": int }}, "reasoning":
+      str }}'
+    sink: updated_parameters
+    next: confirm
+  acquire:
+    type: acquire
+    sink: current_image
+    next:
+      condition: not direct_mode
+      then: assess
+      otherwise: analyze
+  align:
+    type: align
+    sink: [focus, stigmator_values]
+    next: acquire
+  assess:
+    type: prompt
+    template: 'Analyze the TEM image quality: Current Settings: - Magnification: {magnification}
+      - Focus: {focus} - Stigmator Values: {stigmator_values} - Frame Size: {frame_size}
+      - Exposure: {exposure_time} Evaluate image for: 1. Focus quality (check Fresnel
+      fringes, edge sharpness) 2. Astigmatism correction 3. Brightness and contrast
+      4. Signal-to-noise ratio 5. Stage drift effects 6. Beam damage indicators Output
+      analysis as JSON: {{ "quality_score": float (0-10), "issues": [ {{ "type": str,
+      "severity": str, "description": str }} ], "improvements": [ {{ "parameter":
+      str, "suggestion": str, "reasoning": str }} ] }}'
+    sink: image_quality_metrics
+    image_keys: current_image
+    next:
+      condition: image_quality_metrics["quality_score"] < 8.0
+      then: align
+      otherwise: optimize
+  optimize:
+    type: prompt
+    template: 'Review current imaging performance: Quality Metrics: {image_quality_metrics}
+      Optimization History: {optimization_history} Current Parameters: - Magnification:
+      {magnification} - Focus: {focus} - Stigmator Values: {stigmator_values} - Exposure
+      Time: {exposure_time} - Frame Size: {frame_size} Suggest parameter adjustments
+      to improve image quality. Consider: 1. Previous optimization attempts 2. Quality
+      improvement trends 3. Physical limits of the system Output as JSON: {{ "parameter_values":
+      {{ "magnification": float, "focus": float, "exposure_time": float, "frame_size":
+      int }}, "reasoning": str, "stop_optimization": bool }}'
+    sink: updated_parameters
+    next:
+      condition: not updated_parameters["stop_optimization"]
+      then: confirm
+      otherwise: analyze
+  confirm:
+    type: confirm
+    sink:
+    - magnification
+    - focus
+    - exposure_time
+    - frame_size
+    - trail_mode
+    - direct_mode
+    - detector_type
+    next: acquire
+  analyze:
+    type: analyze
+    sink: data_analysis_results
+    next: END
+entry_point: initialize
+llm: gpt-4o
+vlm: gpt-4o
+exit_commands: [stop workflow, quit workflow, terminate workflow]
+checkpointer: memory

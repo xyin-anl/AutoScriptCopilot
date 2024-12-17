@@ -4,7 +4,7 @@
 > [!WARNING]
 > Under development, breaking changes will occur without notice.
 
-# AutoScriptCopilit
+# AutoScriptCopilot
 
 This repository contains a state machine-based workflow for automated Transmission Electron Microscope (TEM) experiment control, built using the [`nodeology`](https://github.com/xyin-anl/Nodeology) framework and Thermo Fisher's [AutoScript](https://www.thermofisher.com/us/en/home/electron-microscopy/products/software-em-3d-vis/autoscript-tem-software.html) interface.
 

@@ -45,15 +45,18 @@ class TEMState(State):
     frame_size: int
     detector_type: str
     trail_mode: bool = True
+
+    # Knowledge
+    recommender_knowledge: str
+    data_analysis_tool: str
+
     # Results
     current_image: str  # Path to the image file instead of np.ndarray
     image_quality_metrics: Dict[str, float]
     optimization_history: List[Dict]
     validation_response: Dict
     updated_parameters: Dict
-
-    # Knowledge
-    recommender_knowledge: str
+    data_analysis_results: Dict
 
 
 # Define validation node
@@ -364,6 +367,18 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
             )
 
 
+@as_node(sink=["data_analysis_results"])
+def data_analysis(data_analysis_tool: str, data_analysis_results: Dict) -> Dict:
+    """Run data analysis using specified tool"""
+    try:
+        # Use the specified data analysis tool to analyze the results
+        # This is a placeholder for actual data analysis logic
+        # Replace this with the actual implementation of the data analysis tool
+        return {"data_analysis_results": data_analysis_results}
+    except Exception as e:
+        raise RuntimeError(f"Data analysis failed: {str(e)}")
+
+
 # Create the workflow class
 class TEMWorkflow(Workflow):
     """Workflow for automated TEM imaging"""
@@ -378,7 +393,7 @@ class TEMWorkflow(Workflow):
         self.add_node("assess", quality_assessor)
         self.add_node("optimize", parameter_optimizer)
         self.add_node("confirm", confirm_parameters)
-
+        self.add_node("analyze", data_analysis)
         # Add edges with conditional logic
         self.add_flow("initialize", "validate")
         self.add_conditional_flow(
@@ -406,8 +421,10 @@ class TEMWorkflow(Workflow):
             "optimize",
             lambda state: not state["updated_parameters"]["stop_optimization"],
             then="confirm",
-            otherwise=END,
+            otherwise="analyze",
         )
+
+        self.add_flow("analyze", END)
 
         # Set entry point
         self.set_entry("initialize")

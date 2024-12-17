@@ -41,19 +41,25 @@ class MockTemMicroscopeClient:
         ):
             # Create a mock image as a numpy array
             mock_image = (
-                np.random.rand(frame_size, frame_size) * 255
+                #np.random.rand(frame_size, frame_size) * 255
+                _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode)
+
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
 
         def acquire_stem_data(self, frame_size, exposure_time, trail_mode):
             mock_image = (
-                np.random.rand(frame_size, frame_size) * 255
+                #np.random.rand(frame_size, frame_size) * 255
+                _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode)
+
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
 
         def acquire_stem_image(self, frame_size, exposure_time, trail_mode):
             mock_image = (
-                np.random.rand(frame_size, frame_size) * 255
+                
+                _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode)
+                #np.random.rand(frame_size, frame_size) * 255
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
 
@@ -73,3 +79,41 @@ class RunBeamTiltAutoFocusSettings:
 
 class CameraType:
     BM_CETA = "BM_CETA"
+
+def _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode):
+    """Generate a mock image simulating periodic atomic structures with consistent Gaussian widths."""
+
+    # Parameters for atomic structure
+    lattice_constant = frame_size // 10  # Distance between atoms
+    atom_width = np.random.uniform(0.5, 5.0)  # Randomly generate width between 0.5 and 3
+    
+    # Create meshgrid for the entire image
+    y, x = np.meshgrid(np.arange(frame_size), np.arange(frame_size))
+    
+    # Calculate number of atoms needed in each dimension
+    n_atoms = int(frame_size // lattice_constant + 2)  # Add extra atoms for edges and ensure integer
+    
+    # Create grid of atom positions
+    atom_positions_x = np.linspace(-lattice_constant, frame_size + lattice_constant, n_atoms)
+    atom_positions_y = np.linspace(-lattice_constant, frame_size + lattice_constant, n_atoms)
+    
+    # Add random offsets and displacements to positions
+    random_offset_x = np.random.uniform(-lattice_constant/4, lattice_constant/4)
+    random_offset_y = np.random.uniform(-lattice_constant/4, lattice_constant/4)
+
+    atom_positions_x = atom_positions_x + random_offset_x + np.random.normal(0, lattice_constant/100, n_atoms)
+    atom_positions_y = atom_positions_y + random_offset_y + np.random.normal(0, lattice_constant/100, n_atoms)
+    
+    # Reshape coordinates for broadcasting
+    x_coords = x[:, :, np.newaxis, np.newaxis]
+    y_coords = y[:, :, np.newaxis, np.newaxis]
+    atom_x = atom_positions_x[np.newaxis, np.newaxis, :, np.newaxis]
+    atom_y = atom_positions_y[np.newaxis, np.newaxis, np.newaxis, :]
+    
+    # Calculate all Gaussians at once
+    gaussians = np.exp(-((x_coords - atom_x)**2 + (y_coords - atom_y)**2) / (2 * atom_width**2))
+    image = np.sum(gaussians, axis=(2, 3))
+
+    # Normalize and convert to uint8
+    image = ((image - image.min()) / (image.max() - image.min()) * 255)
+    return image.astype(np.uint8)

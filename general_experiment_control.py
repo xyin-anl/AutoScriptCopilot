@@ -52,6 +52,9 @@ class TEMState(State):
     validation_response: Dict
     updated_parameters: Dict
 
+    # Knowledge
+    recommender_knowledge: str
+
 
 # Define validation node
 validate_setup = Node(
@@ -72,6 +75,37 @@ Output validation results as JSON:
     "recommendations": [str]
 }}""",
     sink="validation_response",
+    sink_format="json",
+    sink_transform=lambda x: json.loads(x),
+)
+
+
+parameter_recommender = Node(
+    prompt_template="""Recommender knowledge:
+{recommender_knowledge}
+
+Current microscope state and setup:
+- Vacuum State: {vacuum_state}
+- Beam State: {beam_state}
+- Detector Type: {detector_type}
+
+Recommend optimal imaging parameters for the current setup.
+Consider:
+1. Detector capabilities and limitations
+2. Sample preservation requirements
+3. Image quality requirements
+
+Output as JSON:
+{{
+    "parameter_values": {{
+        "magnification": float,
+        "focus": float,
+        "exposure_time": float,
+        "frame_size": int
+    }},
+    "reasoning": str
+}}""",
+    sink="updated_parameters",
     sink_format="json",
     sink_transform=lambda x: json.loads(x),
 )
@@ -129,9 +163,14 @@ def acquire_image(
     """Acquire image and save to file"""
     try:
         microscope = MicroscopeManager.get_instance().get_microscope(microscope_id)
-        image = microscope.acquisition.acquire_camera_image(
-            detector_type, frame_size, exposure_time
-        )
+        if detector_type == "empad":
+            image = microscope.acquisition.acquire_stem_data(frame_size, exposure_time)
+        elif detector_type in ["haadf"]:
+            image = microscope.acquisition.acquire_stem_image(frame_size, exposure_time)
+        else:
+            image = microscope.acquisition.acquire_camera_image(
+                detector_type, frame_size, exposure_time
+            )
 
         # Convert to numpy array if needed
         if not isinstance(image, np.ndarray):
@@ -177,12 +216,16 @@ def auto_align(microscope_id: str) -> tuple:
         raise RuntimeError(f"Auto-alignment failed: {str(e)}")
 
 
+# The quality accessment process itself could be a complex workflow that involves multiple steps and techniques
+# This is a simplified version for demonstration purposes using only vision language model
 quality_assessor = Node(
     prompt_template="""Analyze the TEM image quality:
 
 Current Settings:
 - Magnification: {magnification}
 - Focus: {focus}
+- Stigmator Values: {stigmator_values}
+- Frame Size: {frame_size}
 - Exposure: {exposure_time}
 
 Evaluate image for:
@@ -226,7 +269,9 @@ Optimization History: {optimization_history}
 Current Parameters:
 - Magnification: {magnification}
 - Focus: {focus}
+- Stigmator Values: {stigmator_values}
 - Exposure Time: {exposure_time}
+- Frame Size: {frame_size}
 
 Suggest parameter adjustments to improve image quality.
 Consider:
@@ -236,10 +281,11 @@ Consider:
 
 Output as JSON:
 {{
-    "parameter_updates": {{
+    "parameter_values": {{
         "magnification": float,
         "focus": float,
-        "exposure_time": float
+        "exposure_time": float,
+        "frame_size": int
     }},
     "reasoning": str,
     "stop_optimization": bool
@@ -250,6 +296,59 @@ Output as JSON:
 )
 
 
+@as_node(sink=["magnification", "focus", "exposure_time", "frame_size"])
+def confirm_parameters(updated_parameters: Dict) -> tuple:
+    """Display recommended parameters and get user confirmation/adjustments"""
+    print("\nRecommended parameters:")
+    for param, value in updated_parameters.get("parameter_values", {}).items():
+        print(f"- {param}: {value}")
+
+    if "reasoning" in updated_parameters:
+        print(f"\nReasoning: {updated_parameters['reasoning']}")
+
+    while True:
+        choice = input("\nDo you want to: [a]ccept, [m]odify, or [c]ancel? ").lower()
+
+        if choice == "a":
+            params = updated_parameters["parameter_values"]
+            return (
+                params.get("magnification"),
+                params.get("focus"),
+                params.get("exposure_time"),
+                params.get("frame_size"),
+            )
+        elif choice == "m":
+            modified_params = updated_parameters.copy()
+            params = modified_params["parameter_values"]
+            print("\nEnter new values (press Enter to keep current value):")
+
+            for param in ["magnification", "focus", "exposure_time", "frame_size"]:
+                current = params.get(param)
+                new_value = input(f"{param} ({current}): ").strip()
+                if new_value:
+                    try:
+                        params[param] = float(new_value)
+                    except ValueError:
+                        print(f"Invalid value for {param}, keeping original")
+
+            return (
+                params.get("magnification"),
+                params.get("focus"),
+                params.get("exposure_time"),
+                params.get("frame_size"),
+            )
+        elif choice == "c":
+            params = updated_parameters["parameter_values"]
+            if "stop_optimization" in params:
+                params["stop_optimization"] = True
+            return (
+                params.get("magnification"),
+                params.get("focus"),
+                params.get("exposure_time"),
+                params.get("frame_size"),
+            )
+
+
 # Create the workflow class
 class TEMWorkflow(Workflow):
     """Workflow for automated TEM imaging"""
@@ -258,19 +357,24 @@ class TEMWorkflow(Workflow):
         # Add nodes
         self.add_node("initialize", initialize_microscope)
         self.add_node("validate", validate_setup)
+        self.add_node("recommend", parameter_recommender)
         self.add_node("acquire", acquire_image)
         self.add_node("align", auto_align)
         self.add_node("assess", quality_assessor)
         self.add_node("optimize", parameter_optimizer)
+        self.add_node("confirm", confirm_parameters)
 
         # Add edges with conditional logic
         self.add_flow("initialize", "validate")
         self.add_conditional_flow(
             "validate",
             lambda state: state["validation_response"]["is_valid"],
-            then="acquire",
+            then="recommend",
             otherwise=END,
         )
+        self.add_flow("recommend", "confirm")
+
+        self.add_flow("confirm", "acquire")
 
         self.add_flow("acquire", "assess")
 
@@ -286,7 +390,7 @@ class TEMWorkflow(Workflow):
         self.add_conditional_flow(
             "optimize",
             lambda state: not state["updated_parameters"]["stop_optimization"],
-            then="acquire",
+            then="confirm",
             otherwise=END,
         )
 
@@ -294,7 +398,7 @@ class TEMWorkflow(Workflow):
         self.set_entry("initialize")
 
         # Compile workflow with intervention points
-        self.compile(interrupt_before=["optimize"], checkpointer="memory")
+        self.compile(checkpointer="memory")
 
 
 if __name__ == "__main__":
@@ -303,20 +407,23 @@ if __name__ == "__main__":
         state_defs=TEMState, llm_name="gpt-4o", vlm_name="gpt-4o", debug_mode=True
     )
 
-    # # Optional: Export workflow flowchart and template
-    # workflow.to_yaml("tem_workflow.yaml")
-    # workflow.graph.get_graph().draw_mermaid_png(output_file_path="tem_workflow.png")
+    # Optional: Export workflow flowchart and template
+    workflow.to_yaml("tem_workflow.yaml")
+    workflow.graph.get_graph().draw_mermaid_png(output_file_path="tem_workflow.png")
+
+    # Provide expert knowledge
+    expert_knowledge = """
+    """
 
     # Define initial state
     initial_state = {
         # Set initial imaging parameters
         "magnification": 20000,
+        "focus": 0.0,
         "exposure_time": 0.1,
         "frame_size": 2048,
-        "detector_type": "BM_CETA",
-        # Initialize empty tracking lists
-        "optimization_history": [],
-        "image_quality_metrics": {"quality_score": 0},
+        "detector_type": "empad",
+        "recommender_knowledge": expert_knowledge,
     }
 
     # Run workflow

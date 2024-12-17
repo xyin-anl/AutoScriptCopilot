@@ -44,7 +44,7 @@ class TEMState(State):
     exposure_time: float
     frame_size: int
     detector_type: str
-
+    trail_mode: bool = True
     # Results
     current_image: str  # Path to the image file instead of np.ndarray
     image_quality_metrics: Dict[str, float]
@@ -159,17 +159,22 @@ def acquire_image(
     detector_type: str,
     frame_size: int,
     exposure_time: float,
+    trail_mode: bool = False,
 ) -> str:  # Return str instead of np.ndarray
     """Acquire image and save to file"""
     try:
         microscope = MicroscopeManager.get_instance().get_microscope(microscope_id)
         if detector_type == "empad":
-            image = microscope.acquisition.acquire_stem_data(frame_size, exposure_time)
+            image = microscope.acquisition.acquire_stem_data(
+                frame_size, exposure_time, trail_mode
+            )
         elif detector_type in ["haadf"]:
-            image = microscope.acquisition.acquire_stem_image(frame_size, exposure_time)
+            image = microscope.acquisition.acquire_stem_image(
+                frame_size, exposure_time, trail_mode
+            )
         else:
             image = microscope.acquisition.acquire_camera_image(
-                detector_type, frame_size, exposure_time
+                detector_type, frame_size, exposure_time, trail_mode
             )
 
         # Convert to numpy array if needed
@@ -296,7 +301,7 @@ Output as JSON:
 )
 
 
-@as_node(sink=["magnification", "focus", "exposure_time", "frame_size"])
+@as_node(sink=["magnification", "focus", "exposure_time", "frame_size", "trail_mode"])
 def confirm_parameters(updated_parameters: Dict) -> tuple:
     """Display recommended parameters and get user confirmation/adjustments"""
     print("\nRecommended parameters:")
@@ -311,11 +316,14 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
 
         if choice == "a":
             params = updated_parameters["parameter_values"]
+            print("Do you want to use trail mode? [y/n]")
+            trail_mode = input().lower() == "y"
             return (
                 params.get("magnification"),
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
+                trail_mode,
             )
         elif choice == "m":
             modified_params = updated_parameters.copy()
@@ -331,21 +339,28 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
                     except ValueError:
                         print(f"Invalid value for {param}, keeping original")
 
+            print("Do you want to use trail mode? [y/n]")
+            trail_mode = input().lower() == "y"
+
             return (
                 params.get("magnification"),
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
+                trail_mode,
             )
         elif choice == "c":
             params = updated_parameters["parameter_values"]
             if "stop_optimization" in params:
                 params["stop_optimization"] = True
+            print("Do you want to use trail mode? [y/n]")
+            trail_mode = input().lower() == "y"
             return (
                 params.get("magnification"),
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
+                trail_mode,
             )
 
 
@@ -411,20 +426,20 @@ if __name__ == "__main__":
     workflow.to_yaml("tem_workflow.yaml")
     workflow.graph.get_graph().draw_mermaid_png(output_file_path="tem_workflow.png")
 
-    # Provide expert knowledge
-    expert_knowledge = """
-    """
+    # # Provide expert knowledge
+    # expert_knowledge = """
+    # """
 
-    # Define initial state
-    initial_state = {
-        # Set initial imaging parameters
-        "magnification": 20000,
-        "focus": 0.0,
-        "exposure_time": 0.1,
-        "frame_size": 2048,
-        "detector_type": "empad",
-        "recommender_knowledge": expert_knowledge,
-    }
+    # # Define initial state
+    # initial_state = {
+    #     # Set initial imaging parameters
+    #     "magnification": 20000,
+    #     "focus": 0.0,
+    #     "exposure_time": 0.1,
+    #     "frame_size": 2048,
+    #     "detector_type": "empad",
+    #     "recommender_knowledge": expert_knowledge,
+    # }
 
-    # Run workflow
-    result = workflow.run(initial_state)
+    # # Run workflow
+    # result = workflow.run(initial_state)

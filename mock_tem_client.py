@@ -36,20 +36,22 @@ class MockTemMicroscopeClient:
             return type("Detector", (), {"is_operational": True})()
 
     class Acquisition:
-        def acquire_camera_image(self, detector_type, frame_size, exposure_time):
+        def acquire_camera_image(
+            self, detector_type, frame_size, exposure_time, trail_mode
+        ):
             # Create a mock image as a numpy array
             mock_image = (
                 np.random.rand(frame_size, frame_size) * 255
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
 
-        def acquire_stem_data(self, frame_size, exposure_time):
+        def acquire_stem_data(self, frame_size, exposure_time, trail_mode):
             mock_image = (
                 np.random.rand(frame_size, frame_size) * 255
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
 
-        def acquire_stem_image(self, frame_size, exposure_time):
+        def acquire_stem_image(self, frame_size, exposure_time, trail_mode):
             mock_image = (
                 np.random.rand(frame_size, frame_size) * 255
             )  # Random grayscale image

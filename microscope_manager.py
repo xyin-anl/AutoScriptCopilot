@@ -1,4 +1,3 @@
-# Add this at the top of the file, after imports
 class MicroscopeManager:
     _instance = None
     _microscope = None

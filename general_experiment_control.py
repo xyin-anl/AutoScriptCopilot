@@ -44,8 +44,8 @@ class TEMState(State):
     exposure_time: float
     frame_size: int
     detector_type: str
-    trail_mode: bool = True
-    direct_mode: bool = False
+    trail_mode: bool
+    direct_mode: bool
 
     # Knowledge
     recommender_knowledge: str
@@ -482,7 +482,7 @@ if __name__ == "__main__":
 
     # Optional: Export workflow to yaml template and flowchart
     workflow.to_yaml("tem_workflow.yaml")
-    workflow.graph.get_graph().draw_mermaid_png(output_file_path="tem_workflow.png")
+    # workflow.graph.get_graph().draw_mermaid_png(output_file_path="tem_workflow.png")
 
     # Provide expert knowledge for recommender or retrieve from knowledge base or search the internet
     expert_knowledge = """Knowledge about microscope settings and parameters..."""
@@ -495,17 +495,17 @@ if __name__ == "__main__":
     # web_client = PPLX_Client(model_name="lama-3.1-sonar-large-128k-online")
     # expert_knowledge = web_client([{"role":"user", "content":query}])
 
-    # # Define initial state
-    # initial_state = {
-    #     # Set initial imaging parameters
-    #     "magnification": 20000,
-    #     "focus": 0.0,
-    #     "exposure_time": 0.1,
-    #     "frame_size": 2048,
-    #     "detector_type": "empad",
-    #     "trail_mode_detector_type": "haadf",
-    #     "recommender_knowledge": expert_knowledge,
-    # }
+    # Define initial state
+    initial_state = {
+        # Set initial imaging parameters
+        "magnification": 20000,
+        "focus": 0.0,
+        "exposure_time": 0.1,
+        "frame_size": 2048,
+        "detector_type": "empad",
+        "trail_mode_detector_type": "haadf",
+        "recommender_knowledge": expert_knowledge,
+    }
 
-    # # Run workflow
-    # result = workflow.run(initial_state)
+    # Run workflow
+    result = workflow.run(initial_state)

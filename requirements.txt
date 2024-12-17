@@ -1,0 +1,5 @@
+numpy
+cv2
+tifffile
+pygraphviz
+git+https://github.com/xyin-anl/Nodeology.git

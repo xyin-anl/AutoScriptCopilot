@@ -5,8 +5,8 @@ from typing import List, Dict
 from nodeology.state import State
 from nodeology.node import Node, as_node
 from nodeology.workflow import Workflow
+from nodeology.client import R2R_Client, PPLX_Client
 from langgraph.graph import END
-
 from microscope_manager import MicroscopeManager
 
 # Actual microscope client may be used in production
@@ -45,10 +45,12 @@ class TEMState(State):
     frame_size: int
     detector_type: str
     trail_mode: bool = True
+    direct_mode: bool = False
 
     # Knowledge
     recommender_knowledge: str
     data_analysis_tool: str
+    trail_mode_detector_type: str
 
     # Results
     current_image: str  # Path to the image file instead of np.ndarray
@@ -304,7 +306,17 @@ Output as JSON:
 )
 
 
-@as_node(sink=["magnification", "focus", "exposure_time", "frame_size", "trail_mode"])
+@as_node(
+    sink=[
+        "magnification",
+        "focus",
+        "exposure_time",
+        "frame_size",
+        "trail_mode",
+        "direct_mode",
+        "detector_type",
+    ]
+)
 def confirm_parameters(updated_parameters: Dict) -> tuple:
     """Display recommended parameters and get user confirmation/adjustments"""
     print("\nRecommended parameters:")
@@ -321,12 +333,20 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
             params = updated_parameters["parameter_values"]
             print("Do you want to use trail mode? [y/n]")
             trail_mode = input().lower() == "y"
+            print("Do you want to use direct mode? [y/n]")
+            direct_mode = input().lower() == "y"
             return (
                 params.get("magnification"),
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
                 trail_mode,
+                direct_mode,
+                (
+                    params.get("trail_mode_detector_type")
+                    if trail_mode
+                    else params.get("detector_type")
+                ),
             )
         elif choice == "m":
             modified_params = updated_parameters.copy()
@@ -344,6 +364,8 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
 
             print("Do you want to use trail mode? [y/n]")
             trail_mode = input().lower() == "y"
+            print("Do you want to use direct mode? [y/n]")
+            direct_mode = input().lower() == "y"
 
             return (
                 params.get("magnification"),
@@ -351,6 +373,12 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
                 params.get("exposure_time"),
                 params.get("frame_size"),
                 trail_mode,
+                direct_mode,
+                (
+                    params.get("trail_mode_detector_type")
+                    if trail_mode
+                    else params.get("detector_type")
+                ),
             )
         elif choice == "c":
             params = updated_parameters["parameter_values"]
@@ -358,12 +386,20 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
                 params["stop_optimization"] = True
             print("Do you want to use trail mode? [y/n]")
             trail_mode = input().lower() == "y"
+            print("Do you want to use direct mode? [y/n]")
+            direct_mode = input().lower() == "y"
             return (
                 params.get("magnification"),
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
                 trail_mode,
+                direct_mode,
+                (
+                    params.get("trail_mode_detector_type")
+                    if trail_mode
+                    else params.get("detector_type")
+                ),
             )
 
 
@@ -406,7 +442,12 @@ class TEMWorkflow(Workflow):
 
         self.add_flow("confirm", "acquire")
 
-        self.add_flow("acquire", "assess")
+        self.add_conditional_flow(
+            "acquire",
+            lambda state: not state["direct_mode"],
+            then="assess",
+            otherwise="analyze",
+        )
 
         self.add_conditional_flow(
             "assess",
@@ -439,13 +480,20 @@ if __name__ == "__main__":
         state_defs=TEMState, llm_name="gpt-4o", vlm_name="gpt-4o", debug_mode=True
     )
 
-    # Optional: Export workflow flowchart and template
+    # Optional: Export workflow to yaml template and flowchart
     workflow.to_yaml("tem_workflow.yaml")
     workflow.graph.get_graph().draw_mermaid_png(output_file_path="tem_workflow.png")
 
-    # # Provide expert knowledge
-    # expert_knowledge = """
-    # """
+    # Provide expert knowledge for recommender or retrieve from knowledge base or search the internet
+    expert_knowledge = """Knowledge about microscope settings and parameters..."""
+    # # Define query
+    # query = "How will the parameters (magnification, focus, exposure time, frame size, detector type) affect the STEM image quality?"
+    # # Retrieve from knowledge base
+    # rag_client = R2R_Client(model_name="gpt-4o", search_strategy="hybrid", rag_strategy="hyde")
+    # expert_knowledge = rag_client([{"role":"user", "content":query}])
+    # # Retrieve from internet
+    # web_client = PPLX_Client(model_name="lama-3.1-sonar-large-128k-online")
+    # expert_knowledge = web_client([{"role":"user", "content":query}])
 
     # # Define initial state
     # initial_state = {
@@ -455,6 +503,7 @@ if __name__ == "__main__":
     #     "exposure_time": 0.1,
     #     "frame_size": 2048,
     #     "detector_type": "empad",
+    #     "trail_mode_detector_type": "haadf",
     #     "recommender_knowledge": expert_knowledge,
     # }
 

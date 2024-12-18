@@ -37,28 +37,28 @@ class MockTemMicroscopeClient:
 
     class Acquisition:
         def acquire_camera_image(
-            self, detector_type, frame_size, exposure_time, trail_mode
+            self, detector_type, frame_size, exposure_time, trial_mode
         ):
             # Create a mock image as a numpy array
             mock_image = (
                 #np.random.rand(frame_size, frame_size) * 255
-                _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode)
+                _generate_periodic_atomic_structure(frame_size, exposure_time, trial_mode)
 
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
 
-        def acquire_stem_data(self, frame_size, exposure_time, trail_mode):
+        def acquire_stem_data(self, frame_size, exposure_time, trial_mode):
             mock_image = (
                 #np.random.rand(frame_size, frame_size) * 255
-                _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode)
+                _generate_periodic_atomic_structure(frame_size, exposure_time, trial_mode)
 
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
 
-        def acquire_stem_image(self, frame_size, exposure_time, trail_mode):
+        def acquire_stem_image(self, frame_size, exposure_time, trial_mode):
             mock_image = (
                 
-                _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode)
+                _generate_periodic_atomic_structure(frame_size, exposure_time, trial_mode)
                 #np.random.rand(frame_size, frame_size) * 255
             )  # Random grayscale image
             return mock_image.astype(np.uint8)  # Convert to 8-bit unsigned integer
@@ -80,7 +80,7 @@ class RunBeamTiltAutoFocusSettings:
 class CameraType:
     BM_CETA = "BM_CETA"
 
-def _generate_periodic_atomic_structure(frame_size, exposure_time, trail_mode):
+def _generate_periodic_atomic_structure(frame_size, exposure_time, trial_mode):
     """Generate a mock image simulating periodic atomic structures with consistent Gaussian widths."""
 
     # Parameters for atomic structure

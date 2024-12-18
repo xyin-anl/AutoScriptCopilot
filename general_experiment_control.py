@@ -44,13 +44,13 @@ class TEMState(State):
     exposure_time: float
     frame_size: int
     detector_type: str
-    trail_mode: bool
+    trial_mode: bool
     direct_mode: bool
 
     # Knowledge
     recommender_knowledge: str
     data_analysis_tool: str
-    trail_mode_detector_type: str
+    trial_mode_detector_type: str
 
     # Results
     current_image: str  # Path to the image file instead of np.ndarray
@@ -164,22 +164,22 @@ def acquire_image(
     detector_type: str,
     frame_size: int,
     exposure_time: float,
-    trail_mode: bool = False,
+    trial_mode: bool = False,
 ) -> str:  # Return str instead of np.ndarray
     """Acquire image and save to file"""
     try:
         microscope = MicroscopeManager.get_instance().get_microscope(microscope_id)
         if detector_type == "empad":
             image = microscope.acquisition.acquire_stem_data(
-                frame_size, exposure_time, trail_mode
+                frame_size, exposure_time, trial_mode
             )
         elif detector_type in ["haadf"]:
             image = microscope.acquisition.acquire_stem_image(
-                frame_size, exposure_time, trail_mode
+                frame_size, exposure_time, trial_mode
             )
         else:
             image = microscope.acquisition.acquire_camera_image(
-                detector_type, frame_size, exposure_time, trail_mode
+                detector_type, frame_size, exposure_time, trial_mode
             )
 
         # Convert to numpy array if needed
@@ -312,7 +312,7 @@ Output as JSON:
         "focus",
         "exposure_time",
         "frame_size",
-        "trail_mode",
+        "trial_mode",
         "direct_mode",
         "detector_type",
     ]
@@ -331,8 +331,8 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
 
         if choice == "a":
             params = updated_parameters["parameter_values"]
-            print("Do you want to use trail mode? [y/n]")
-            trail_mode = input().lower() == "y"
+            print("Do you want to use trial mode? [y/n]")
+            trial_mode = input().lower() == "y"
             print("Do you want to use direct mode? [y/n]")
             direct_mode = input().lower() == "y"
             return (
@@ -340,11 +340,11 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
-                trail_mode,
+                trial_mode,
                 direct_mode,
                 (
-                    params.get("trail_mode_detector_type")
-                    if trail_mode
+                    params.get("trial_mode_detector_type")
+                    if trial_mode
                     else params.get("detector_type")
                 ),
             )
@@ -362,8 +362,8 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
                     except ValueError:
                         print(f"Invalid value for {param}, keeping original")
 
-            print("Do you want to use trail mode? [y/n]")
-            trail_mode = input().lower() == "y"
+            print("Do you want to use trial mode? [y/n]")
+            trial_mode = input().lower() == "y"
             print("Do you want to use direct mode? [y/n]")
             direct_mode = input().lower() == "y"
 
@@ -372,11 +372,11 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
-                trail_mode,
+                trial_mode,
                 direct_mode,
                 (
-                    params.get("trail_mode_detector_type")
-                    if trail_mode
+                    params.get("trial_mode_detector_type")
+                    if trial_mode
                     else params.get("detector_type")
                 ),
             )
@@ -384,8 +384,8 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
             params = updated_parameters["parameter_values"]
             if "stop_optimization" in params:
                 params["stop_optimization"] = True
-            print("Do you want to use trail mode? [y/n]")
-            trail_mode = input().lower() == "y"
+            print("Do you want to use trial mode? [y/n]")
+            trial_mode = input().lower() == "y"
             print("Do you want to use direct mode? [y/n]")
             direct_mode = input().lower() == "y"
             return (
@@ -393,11 +393,11 @@ def confirm_parameters(updated_parameters: Dict) -> tuple:
                 params.get("focus"),
                 params.get("exposure_time"),
                 params.get("frame_size"),
-                trail_mode,
+                trial_mode,
                 direct_mode,
                 (
-                    params.get("trail_mode_detector_type")
-                    if trail_mode
+                    params.get("trial_mode_detector_type")
+                    if trial_mode
                     else params.get("detector_type")
                 ),
             )
@@ -503,7 +503,7 @@ if __name__ == "__main__":
         "exposure_time": 0.1,
         "frame_size": 2048,
         "detector_type": "empad",
-        "trail_mode_detector_type": "haadf",
+        "trial_mode_detector_type": "haadf",
         "recommender_knowledge": expert_knowledge,
     }
 

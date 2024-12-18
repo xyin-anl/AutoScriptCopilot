@@ -77,13 +77,13 @@ class TEMState(State):
     exposure_time: float
     frame_size: int
     detector_type: str
-    trail_mode: bool
+    trial_mode: bool
     direct_mode: bool
 
     # Knowledge
     recommender_knowledge: str
     data_analysis_tool: str
-    trail_mode_detector_type: str
+    trial_mode_detector_type: str
 
     # Results
     current_image: str
@@ -149,7 +149,7 @@ initial_state = {
     "exposure_time": 0.1,
     "frame_size": 2048,
     "detector_type": "empad",
-    "trail_mode_detector_type": "haadf",
+    "trial_mode_detector_type": "haadf",
     "recommender_knowledge": expert_knowledge
 }
 
@@ -185,7 +185,7 @@ workflow.to_yaml("tem_workflow.yaml")
 1. **Parameter Management**
 
    - Start with conservative parameter values
-   - Use trail mode for initial parameter testing
+   - Use trial mode for initial parameter testing
    - Validate parameters before full acquisition
 
 2. **Quality Control**

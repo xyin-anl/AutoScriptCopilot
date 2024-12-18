@@ -1,4 +1,4 @@
-name: TEMWorkflow_12_17_2024_12_44_10
+name: TEMWorkflow_12_17_2024_22_15_45
 state_defs:
 - current_node_type: str
 - previous_node_type: str
@@ -17,11 +17,11 @@ state_defs:
 - exposure_time: float
 - frame_size: int
 - detector_type: str
-- trail_mode: bool
+- trial_mode: bool
 - direct_mode: bool
 - recommender_knowledge: str
 - data_analysis_tool: str
-- trail_mode_detector_type: str
+- trial_mode_detector_type: str
 - current_image: str
 - image_quality_metrics: Dict[str, float]
 - optimization_history: List[dict]
@@ -110,7 +110,7 @@ nodes:
     - focus
     - exposure_time
     - frame_size
-    - trail_mode
+    - trial_mode
     - direct_mode
     - detector_type
     next: acquire
